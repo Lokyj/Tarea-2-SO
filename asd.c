@@ -5,29 +5,15 @@
 #include <pthread.h>
 #include <unistd.h>
 
+#include "entidades.h"
+#include "parser.h"
+#include "matriz_hooks.h"
 
 #define NUM_MONSTRUOS 5
 
-typedef struct {
-    int x;
-    int y;
-} Coord;
-
-typedef struct {
-    char type[50];
-    char estado[50];
-    int vida;
-    int daño;
-    int rango_ataque;
-    Coord start_coords;
-    int* rango_vision;
-    Coord* ruta;
-    int ruta_length;
-} Entidad;
-
 // tablero
-#define TABLERO_SIZE 10
-Entidad *tablero[TABLERO_SIZE][TABLERO_SIZE];
+Entidad*** matriz;
+int width, height, total_entidades;
 
 // Semáforos para controlar turnos
 sem_t turno_heroe;
@@ -52,6 +38,7 @@ void *agente(void *arg) {
         }
         
         printf("--- Ciclo completado ---\n");
+        print_matriz_simple(matriz, width, height);
     }
     return NULL;
 }
@@ -88,7 +75,23 @@ void *monstruo(void *arg) {
     return NULL;
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    if (argc != 2) {
+        printf("Uso: %s <archivo_config>\n", argv[0]);
+        return 1;
+    }
+    
+    matriz = read_game_config(argv[1], &width, &height, &total_entidades);
+    
+    if (!matriz) {
+        printf("Error al leer la configuración\n");
+        return 1;
+    }
+    
+    // Imprimir estado inicial
+    printf("Estado inicial del juego:\n");
+    print_matriz_simple(matriz, width, height);
+    
     pthread_t agente_thread;
     pthread_t heroe_thread;
     pthread_t monstruo_threads[NUM_MONSTRUOS];
@@ -132,6 +135,7 @@ int main() {
     }
     
     pthread_mutex_destroy(&mutex);
+    free_matriz(matriz, height, width);
     
     return 0;
 }
