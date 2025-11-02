@@ -4,9 +4,11 @@
 #include "entidades.h"
 
 // Leer archivo de configuración y crear matriz
-Entidad*** read_game_config(const char* filename, int* width, int* height, int* total_entidades, Entidad* heroe, Entidad* monstruos);
+// Nota: el parámetro `monstruos` es un output (puntero a puntero). La función
+// asignará memoria para el arreglo de monstruos y pondrá *monstruos al arreglo.
+Entidad ***read_game_config(const char *filename, int *width, int *height, int *total_entidades, Entidad *heroe, Entidad **monstruos, int *cantidad_monstruos);
 
 // Liberar memoria de la matriz
-void free_matriz(Entidad*** matriz, int height, int width);
+void free_matriz(Entidad ***matriz, int height, int width);
 
 #endif

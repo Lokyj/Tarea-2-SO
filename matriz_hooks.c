@@ -43,14 +43,11 @@ void print_matriz_simple(Entidad*** matriz, int width, int height) {
     printf("\n=== VISUALIZACIÓN DE LA MATRIZ ===\n");
     printf("H = Héroe, M = Monstruo, . = Vacío, X = Meta\n\n");
 
-    int max_show_x = width > 50 ? 50 : width;
-    int max_show_y = height > 40 ? 40 : height;
-
     int meta_x;
     int meta_y;
-    
-    for (int i = 0; i < max_show_y; i++) {
-        for (int j = 0; j < max_show_x; j++) {
+
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
             if (matriz[i][j] != NULL) {
                 if (strcmp(matriz[i][j]->type, "heroe") == 0) {
                     printf("H ");
@@ -68,13 +65,6 @@ void print_matriz_simple(Entidad*** matriz, int width, int height) {
             }
         }
         printf("\n");
-    }
-
-
-    
-    if (width > max_show_x || height > max_show_y) {
-        printf("\n(Mostrando solo primeros %dx%d de %dx%d)\n", 
-               max_show_x, max_show_y, width, height);
     }
 }
 

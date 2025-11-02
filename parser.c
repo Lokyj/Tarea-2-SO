@@ -41,8 +41,11 @@ static int parse_hero_path(char *line, Coord **path)
     return count;
 }
 
-// recibe una entidad de heroe y un arreglo de entidades de monstruos
-Entidad ***read_game_config(const char *filename, int *width, int *height, int *total_entidades, Entidad *heroe, Entidad *monstruos)
+
+
+// recibe una entidad de heroe y un puntero a arreglo de entidades de monstruos
+// la función asignará memoria para *monstruos según MONSTER_COUNT
+Entidad ***read_game_config(const char *filename, int *width, int *height, int *total_entidades, Entidad *heroe, Entidad **monstruos, int *cantidad_monstruos)
 {
     FILE *file = fopen(filename, "r");
     if (!file)
@@ -71,6 +74,7 @@ Entidad ***read_game_config(const char *filename, int *width, int *height, int *
     *width = grid_width;
     *height = grid_height;
     *total_entidades = monster_count + 1;
+    *cantidad_monstruos = monster_count;
 
     // Crear matriz inicializada en NULL
     Entidad ***matriz = malloc(grid_height * sizeof(Entidad **));
@@ -189,11 +193,12 @@ Entidad ***read_game_config(const char *filename, int *width, int *height, int *
     *heroe = entidades[0];
     heroe->current_coords = heroe->start_coords;
 
-    // dar valores a los monstruos
+    // asignar y dar valores a los monstruos (arreglo dinámico apuntado por *monstruos)
+    *monstruos = malloc(monster_count * sizeof(Entidad));
     for (int i = 0; i < monster_count; i++)
     {
-        monstruos[i] = entidades[i + 1];
-        monstruos[i].current_coords = monstruos[i].start_coords;
+        (*monstruos)[i] = entidades[i + 1];
+        (*monstruos)[i].current_coords = (*monstruos)[i].start_coords;
     }
 
     fclose(file);

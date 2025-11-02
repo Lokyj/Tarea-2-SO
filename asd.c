@@ -9,25 +9,51 @@
 #include "parser.h"
 #include "matriz_hooks.h"
 
-#define NUM_MONSTRUOS 24
-
 // tablero
 Entidad ***matriz;
 int width, height, total_entidades;
+int cantidad_monstruos;
 
 // entidades
 Entidad heroe_entidad;
-Entidad monstruos[NUM_MONSTRUOS];
+Entidad *monstruos;
 
 // Semáforos para controlar turnos
 sem_t turno_heroe;
-sem_t turno_monstruos[NUM_MONSTRUOS];
+sem_t *turno_monstruos;
 
 // Semáforos para señalar finalización
 sem_t heroe_done;
-sem_t monstruo_done[NUM_MONSTRUOS];
+sem_t *monstruo_done;
 
 pthread_mutex_t mutex;
+
+void inicializar_estructuras_dinamicas() {
+    // Asignar memoria para los semáforos de turno
+    turno_monstruos = (sem_t *)malloc(cantidad_monstruos * sizeof(sem_t));
+    if (turno_monstruos == NULL) {
+        fprintf(stderr, "Error: No se pudo asignar memoria para turno_monstruos\n");
+        free(monstruos);
+        exit(EXIT_FAILURE);
+    }
+    
+    // Asignar memoria para los semáforos de done
+    monstruo_done = (sem_t *)malloc(cantidad_monstruos * sizeof(sem_t));
+    if (monstruo_done == NULL) {
+        fprintf(stderr, "Error: No se pudo asignar memoria para monstruo_done\n");
+        free(monstruos);
+        free(turno_monstruos);
+        exit(EXIT_FAILURE);
+    }
+    
+    // Inicializar los semáforos
+    for (int i = 0; i < cantidad_monstruos; i++) {
+        sem_init(&turno_monstruos[i], 0, 0);
+        sem_init(&monstruo_done[i], 0, 0);
+    }
+    
+    printf("Estructuras dinámicas inicializadas para %d monstruos\n", cantidad_monstruos);
+}
 
 void *agente(void *arg)
 {
@@ -38,7 +64,7 @@ void *agente(void *arg)
         sem_wait(&heroe_done);
 
         // Turno de cada monstruo
-        for (int i = 0; i < NUM_MONSTRUOS; i++)
+        for (int i = 0; i < cantidad_monstruos; i++)
         {
             sem_post(&turno_monstruos[i]);
             sem_wait(&monstruo_done[i]);
@@ -67,7 +93,7 @@ void *heroe(void *arg)
         Coord heroe_pos = heroe_entidad.current_coords;
         int min_distancia = width + height; // distancia máxima posible
         int closest_monstruo_id = -1;
-        for (int i = 0; i < NUM_MONSTRUOS; i++)
+        for (int i = 0; i < cantidad_monstruos; i++)
         {
             if (monstruos[i].vida > 0)
             {
@@ -295,7 +321,7 @@ void *monstruo(void *arg)
                 printf("Monstruo %d ve al héroe a distancia %d\n", id, distancia);
 
                 // si esta en rango, despierta a todos los monstruos dentro de su rango de vision
-                for (int j = 0; j < NUM_MONSTRUOS; j++)
+                for (int j = 0; j < cantidad_monstruos; j++)
                 {
                     if (j != id && monstruos[j].vida > 0)
                     {
@@ -337,7 +363,9 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    matriz = read_game_config(argv[1], &width, &height, &total_entidades, &heroe_entidad, monstruos);
+    matriz = read_game_config(argv[1], &width, &height, &total_entidades, &heroe_entidad, &monstruos, &cantidad_monstruos);
+
+    inicializar_estructuras_dinamicas();
 
     if (!matriz)
     {
@@ -351,14 +379,14 @@ int main(int argc, char *argv[])
 
     pthread_t agente_thread;
     pthread_t heroe_thread;
-    pthread_t monstruo_threads[NUM_MONSTRUOS];
-    int monstruo_ids[NUM_MONSTRUOS];
+    pthread_t monstruo_threads[cantidad_monstruos];
+    int monstruo_ids[cantidad_monstruos];
 
     // Inicializar semáforos
     sem_init(&turno_heroe, 0, 0);
     sem_init(&heroe_done, 0, 0);
 
-    for (int i = 0; i < NUM_MONSTRUOS; i++)
+    for (int i = 0; i < cantidad_monstruos; i++)
     {
         sem_init(&turno_monstruos[i], 0, 0);
         sem_init(&monstruo_done[i], 0, 0);
@@ -371,7 +399,7 @@ int main(int argc, char *argv[])
     pthread_create(&agente_thread, NULL, agente, NULL);
     pthread_create(&heroe_thread, NULL, heroe, NULL);
 
-    for (int i = 0; i < NUM_MONSTRUOS; i++)
+    for (int i = 0; i < cantidad_monstruos; i++)
     {
         pthread_create(&monstruo_threads[i], NULL, monstruo, &monstruo_ids[i]);
     }
@@ -380,7 +408,7 @@ int main(int argc, char *argv[])
     pthread_join(agente_thread, NULL);
     pthread_join(heroe_thread, NULL);
 
-    for (int i = 0; i < NUM_MONSTRUOS; i++)
+    for (int i = 0; i < cantidad_monstruos; i++)
     {
         pthread_join(monstruo_threads[i], NULL);
     }
@@ -389,7 +417,7 @@ int main(int argc, char *argv[])
     sem_destroy(&turno_heroe);
     sem_destroy(&heroe_done);
 
-    for (int i = 0; i < NUM_MONSTRUOS; i++)
+    for (int i = 0; i < cantidad_monstruos; i++)
     {
         sem_destroy(&turno_monstruos[i]);
         sem_destroy(&monstruo_done[i]);
