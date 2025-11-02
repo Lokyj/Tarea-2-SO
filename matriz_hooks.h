@@ -18,4 +18,10 @@ Entidad* get_entidad_at(Entidad*** matriz, int x, int y, int width, int height);
 // Buscar héroe en la matriz
 Coord* find_heroe(Entidad*** matriz, int width, int height);
 
+// funcion para obtener la distancia de manhattan entre dos puntos
+int distanciaManhattan(int x1, int y1, int x2, int y2);
+
+int generarCamino(int x1, int y1, int x2, int y2, Coord *camino);
+
 #endif
+

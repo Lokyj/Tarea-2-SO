@@ -13,6 +13,7 @@ typedef struct {
     int daño;
     int rango_ataque;
     Coord start_coords;
+    Coord current_coords;
     int* rango_vision;      // NULL para héroe
     Coord* ruta;            // NULL para monstruos
     int ruta_length;
