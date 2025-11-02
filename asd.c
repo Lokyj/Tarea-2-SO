@@ -15,7 +15,7 @@ int width, height, total_entidades;
 int cantidad_monstruos;
 
 // entidades
-Entidad heroe_entidad;
+Entidad *heroes;
 Entidad *monstruos;
 
 // Semáforos para controlar turnos
