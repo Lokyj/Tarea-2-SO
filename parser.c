@@ -41,11 +41,7 @@ static int parse_hero_path(char *line, Coord **path)
     return count;
 }
 
-
-
-// recibe una entidad de heroe y un puntero a arreglo de entidades de monstruos
-// la función asignará memoria para *monstruos según MONSTER_COUNT
-Entidad ***read_game_config(const char *filename, int *width, int *height, int *total_entidades, Entidad *heroe, Entidad **monstruos, int *cantidad_monstruos)
+Entidad ***read_game_config(const char *filename, int *width, int *height, int *total_entidades, Entidad **heroes, Entidad **monstruos, int *cantidad_monstruos, int *cantidad_heroes)
 {
     FILE *file = fopen(filename, "r");
     if (!file)
@@ -57,8 +53,9 @@ Entidad ***read_game_config(const char *filename, int *width, int *height, int *
     char line[MAX_LINE];
     int grid_width = 0, grid_height = 0;
     int monster_count = 0;
+    int hero_count = 0;
 
-    // Primera pasada: obtener dimensiones y contar monstruos
+    // Primera pasada: obtener dimensiones, contar héroes y monstruos
     while (fgets(line, sizeof(line), file))
     {
         if (strncmp(line, "GRID_SIZE", 9) == 0)
@@ -69,12 +66,25 @@ Entidad ***read_game_config(const char *filename, int *width, int *height, int *
         {
             sscanf(line, "MONSTER_COUNT %d", &monster_count);
         }
+        else if (strstr(line, "HERO_") == line)
+        {
+            // Contar cuántos héroes diferentes hay
+            int hero_id;
+            if (sscanf(line, "HERO_%d_", &hero_id) == 1)
+            {
+                if (hero_id > hero_count)
+                {
+                    hero_count = hero_id;
+                }
+            }
+        }
     }
 
     *width = grid_width;
     *height = grid_height;
-    *total_entidades = monster_count + 1;
+    *cantidad_heroes = hero_count;
     *cantidad_monstruos = monster_count;
+    *total_entidades = hero_count + monster_count;
 
     // Crear matriz inicializada en NULL
     Entidad ***matriz = malloc(grid_height * sizeof(Entidad **));
@@ -90,15 +100,18 @@ Entidad ***read_game_config(const char *filename, int *width, int *height, int *
     // Crear arreglo temporal de entidades
     Entidad *entidades = malloc(*total_entidades * sizeof(Entidad));
 
-    // Inicializar héroe (índice 0)
-    strcpy(entidades[0].type, "heroe");
-    strcpy(entidades[0].estado, "vivo");
-    entidades[0].rango_vision = NULL;
-    entidades[0].ruta = NULL;
-    entidades[0].ruta_length = 0;
+    // Inicializar héroes (índices 0 a hero_count-1)
+    for (int i = 0; i < hero_count; i++)
+    {
+        strcpy(entidades[i].type, "heroe");
+        strcpy(entidades[i].estado, "vivo");
+        entidades[i].rango_vision = NULL;
+        entidades[i].ruta = NULL;
+        entidades[i].ruta_length = 0;
+    }
 
-    // Inicializar monstruos (índices 1 a n)
-    for (int i = 1; i < *total_entidades; i++)
+    // Inicializar monstruos (índices hero_count a total_entidades-1)
+    for (int i = hero_count; i < *total_entidades; i++)
     {
         strcpy(entidades[i].type, "monstruo");
         strcpy(entidades[i].estado, "vivo");
@@ -114,51 +127,63 @@ Entidad ***read_game_config(const char *filename, int *width, int *height, int *
     while (fgets(line, sizeof(line), file))
     {
         line[strcspn(line, "\n")] = 0;
-        if (strlen(line) == 0)
+        if (strlen(line) == 0 || line[0] == '#')
             continue;
 
-        if (strncmp(line, "HERO_HP", 7) == 0)
+        // Parsear datos de héroes
+        if (strstr(line, "HERO_") == line)
         {
-            sscanf(line, "HERO_HP %d", &entidades[0].vida);
-        }
-        else if (strncmp(line, "HERO_ATTACK_DAMAGE", 18) == 0)
-        {
-            sscanf(line, "HERO_ATTACK_DAMAGE %d", &entidades[0].daño);
-        }
-        else if (strncmp(line, "HERO_ATTACK_RANGE", 17) == 0)
-        {
-            sscanf(line, "HERO_ATTACK_RANGE %d", &entidades[0].rango_ataque);
-        }
-        else if (strncmp(line, "HERO_START", 10) == 0)
-        {
-            sscanf(line, "HERO_START %d %d",
-                   &entidades[0].start_coords.x,
-                   &entidades[0].start_coords.y);
-        }
-        else if (strncmp(line, "HERO_PATH", 9) == 0)
-        {
-            char path_buffer[MAX_LINE * 10] = "";
-            strcat(path_buffer, line + 10);
+            int hero_id;
+            int value;
 
-            long pos = ftell(file);
-            while (fgets(line, sizeof(line), file))
+            if (sscanf(line, "HERO_%d_HP %d", &hero_id, &value) == 2)
             {
-                line[strcspn(line, "\n")] = 0;
-                if (strlen(line) > 0 && line[0] == '(')
-                {
-                    strcat(path_buffer, " ");
-                    strcat(path_buffer, line);
-                }
-                else
-                {
-                    fseek(file, pos, SEEK_SET);
-                    break;
-                }
-                pos = ftell(file);
+                entidades[hero_id - 1].vida = value;
             }
+            else if (sscanf(line, "HERO_%d_ATTACK_DAMAGE %d", &hero_id, &value) == 2)
+            {
+                entidades[hero_id - 1].daño = value;
+            }
+            else if (sscanf(line, "HERO_%d_ATTACK_RANGE %d", &hero_id, &value) == 2)
+            {
+                entidades[hero_id - 1].rango_ataque = value;
+            }
+            else if (sscanf(line, "HERO_%d_START %d %d", &hero_id,
+                            &entidades[hero_id - 1].start_coords.x,
+                            &entidades[hero_id - 1].start_coords.y) == 3)
+            {
+                // Procesado
+            }
+            else if (strstr(line, "_PATH") != NULL)
+            {
+                sscanf(line, "HERO_%d_PATH", &hero_id);
+                
+                char path_buffer[MAX_LINE * 10] = "";
+                // Obtener el resto de la línea después de "HERO_X_PATH "
+                char *path_start = strstr(line, "PATH") + 5;
+                strcat(path_buffer, path_start);
 
-            entidades[0].ruta_length = parse_hero_path(path_buffer, &entidades[0].ruta);
+                long pos = ftell(file);
+                while (fgets(line, sizeof(line), file))
+                {
+                    line[strcspn(line, "\n")] = 0;
+                    if (strlen(line) > 0 && line[0] == '(')
+                    {
+                        strcat(path_buffer, " ");
+                        strcat(path_buffer, line);
+                    }
+                    else
+                    {
+                        fseek(file, pos, SEEK_SET);
+                        break;
+                    }
+                    pos = ftell(file);
+                }
+
+                entidades[hero_id - 1].ruta_length = parse_hero_path(path_buffer, &entidades[hero_id - 1].ruta);
+            }
         }
+        // Parsear datos de monstruos
         else if (strstr(line, "MONSTER_") == line)
         {
             int monster_id;
@@ -166,42 +191,46 @@ Entidad ***read_game_config(const char *filename, int *width, int *height, int *
 
             if (sscanf(line, "MONSTER_%d_HP %d", &monster_id, &value) == 2)
             {
-                entidades[monster_id].vida = value;
+                entidades[hero_count + monster_id - 1].vida = value;
             }
             else if (sscanf(line, "MONSTER_%d_ATTACK_DAMAGE %d", &monster_id, &value) == 2)
             {
-                entidades[monster_id].daño = value;
+                entidades[hero_count + monster_id - 1].daño = value;
             }
             else if (sscanf(line, "MONSTER_%d_VISION_RANGE %d", &monster_id, &value) == 2)
             {
-                *entidades[monster_id].rango_vision = value;
+                *entidades[hero_count + monster_id - 1].rango_vision = value;
             }
             else if (sscanf(line, "MONSTER_%d_ATTACK_RANGE %d", &monster_id, &value) == 2)
             {
-                entidades[monster_id].rango_ataque = value;
+                entidades[hero_count + monster_id - 1].rango_ataque = value;
             }
             else if (sscanf(line, "MONSTER_%d_COORDS %d %d", &monster_id,
-                            &entidades[monster_id].start_coords.x,
-                            &entidades[monster_id].start_coords.y) == 3)
+                            &entidades[hero_count + monster_id - 1].start_coords.x,
+                            &entidades[hero_count + monster_id - 1].start_coords.y) == 3)
             {
                 // Procesado
             }
         }
     }
 
-    // dar valores al heroe
-    *heroe = entidades[0];
-    heroe->current_coords = heroe->start_coords;
+    fclose(file);
 
-    // asignar y dar valores a los monstruos (arreglo dinámico apuntado por *monstruos)
+    // Asignar y dar valores a los héroes (arreglo dinámico apuntado por *heroes)
+    *heroes = malloc(hero_count * sizeof(Entidad));
+    for (int i = 0; i < hero_count; i++)
+    {
+        (*heroes)[i] = entidades[i];
+        (*heroes)[i].current_coords = (*heroes)[i].start_coords;
+    }
+
+    // Asignar y dar valores a los monstruos (arreglo dinámico apuntado por *monstruos)
     *monstruos = malloc(monster_count * sizeof(Entidad));
     for (int i = 0; i < monster_count; i++)
     {
-        (*monstruos)[i] = entidades[i + 1];
+        (*monstruos)[i] = entidades[hero_count + i];
         (*monstruos)[i].current_coords = (*monstruos)[i].start_coords;
     }
-
-    fclose(file);
 
     // Colocar entidades en la matriz según sus coordenadas iniciales
     for (int i = 0; i < *total_entidades; i++)

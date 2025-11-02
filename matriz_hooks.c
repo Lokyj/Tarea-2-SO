@@ -39,26 +39,52 @@ void print_matriz(Entidad*** matriz, int width, int height, int total_entidades)
     }
 }
 
-void print_matriz_simple(Entidad*** matriz, int width, int height) {
+void print_matriz_simple(Entidad*** matriz, int width, int height, int cantidad_heroes) {
     printf("\n=== VISUALIZACIÓN DE LA MATRIZ ===\n");
     printf("H = Héroe, M = Monstruo, . = Vacío, X = Meta\n\n");
-
-    int meta_x;
-    int meta_y;
-
+    
+    // Array para guardar las metas de cada héroe
+    Coord metas[cantidad_heroes];
+    int metas_count = 0;
+    
+    // Primera pasada: recolectar las posiciones de las metas
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             if (matriz[i][j] != NULL) {
                 if (strcmp(matriz[i][j]->type, "heroe") == 0) {
+                    Entidad *entidad_heroe = matriz[i][j];
+                    
+                    if (entidad_heroe->ruta != NULL && entidad_heroe->ruta_length > 0) {
+                        if (metas_count < cantidad_heroes) {
+                            metas[metas_count].x = entidad_heroe->ruta[entidad_heroe->ruta_length - 1].x;
+                            metas[metas_count].y = entidad_heroe->ruta[entidad_heroe->ruta_length - 1].y;
+                            metas_count++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Segunda pasada: imprimir la matriz
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            int es_meta = 0;
+            
+            for (int k = 0; k < metas_count; k++) {
+                if (i == metas[k].y && j == metas[k].x) {
+                    es_meta = 1;
+                    break;
+                }
+            }
+            
+            if (matriz[i][j] != NULL) {
+                if (strcmp(matriz[i][j]->type, "heroe") == 0) {
                     printf("H ");
-
-                    Entidad entidad_heroe = *matriz[i][j];
-                    meta_x = entidad_heroe.ruta[entidad_heroe.ruta_length - 1].x;
-                    meta_y = entidad_heroe.ruta[entidad_heroe.ruta_length - 1].y;
-                } else {
+                } else if (strcmp(matriz[i][j]->type, "monstruo") == 0) {
                     printf("M ");
                 }
-            } else if (i == meta_y && j == meta_x) {
+            } else if (es_meta > 0) {
                 printf("X ");
             } else {
                 printf(". ");

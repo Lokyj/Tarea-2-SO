@@ -7,7 +7,7 @@
 void print_matriz(Entidad*** matriz, int width, int height, int total_entidades);
 
 // Imprimir visualización simple
-void print_matriz_simple(Entidad*** matriz, int width, int height);
+void print_matriz_simple(Entidad*** matriz, int width, int height, int cantidad_heroes);
 
 // Mover una entidad en la matriz
 void mover_entidad_matriz(Entidad*** matriz, int from_x, int from_y, int to_x, int to_y, int width, int height);
