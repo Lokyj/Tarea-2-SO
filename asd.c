@@ -373,6 +373,7 @@ void *monstruo(void *arg)
                         width,
                         height);
 
+                    // actualizar las coordenadas actuales
                     monstruos[id].current_coords = next_pos;
 
                     // desplaza la ruta (elimina el primer elemento)

@@ -71,13 +71,12 @@ void mover_entidad_matriz(Entidad*** matriz, int from_x, int from_y, int to_x, i
     
     // verifica si hay alguna entidad en la posición de origen
     if (matriz[from_y][from_x] == NULL) {
-        printf("Error: No hay entidad en posición origen\n");
         return;
     }
     
     // ver si el destino esta disponible
     if (matriz[to_y][to_x] != NULL) {
-        printf("Error: Posición destino ocupada\n");
+        printf("Posicion ocupada, esperando...\n");
         return;
     }
     
