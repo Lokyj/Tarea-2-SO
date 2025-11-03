@@ -19,11 +19,11 @@ int cantidad_heroes;
 Entidad *heroes;
 Entidad *monstruos;
 
-// Semáforos para controlar turnos
+// semaforos para turnos
 sem_t *turno_heroe;
 sem_t *turno_monstruos;
 
-// Semáforos para señalar finalización
+// semaforos para señalar finalización
 sem_t *heroe_done;
 sem_t *monstruo_done;
 
@@ -31,7 +31,7 @@ pthread_mutex_t mutex;
 
 void inicializar_estructuras_dinamicas()
 {
-    // asignar memoria para los semáforos de turno de héroes
+    // asignar memoria para los semáforos de turno de heroes
     turno_heroe = (sem_t *)malloc(cantidad_heroes * sizeof(sem_t));
     if (turno_heroe == NULL)
     {
@@ -40,7 +40,7 @@ void inicializar_estructuras_dinamicas()
         exit(EXIT_FAILURE);
     }
 
-    // asignar memoria para los semáforos de done de héroes
+    // asignar memoria para los semáforos de done de heroes
     heroe_done = (sem_t *)malloc(cantidad_heroes * sizeof(sem_t));
     if (heroe_done == NULL)
     {
@@ -50,14 +50,14 @@ void inicializar_estructuras_dinamicas()
         exit(EXIT_FAILURE);
     }
 
-    // inicializar los semáforos
+    // inicializar los semaforos
     for (int i = 0; i < cantidad_heroes; i++)
     {
         sem_init(&turno_heroe[i], 0, 0);
         sem_init(&heroe_done[i], 0, 0);
     }
 
-    // Asignar memoria para los semáforos de turno
+    // asignar memoria para los semaforos de turno
     turno_monstruos = (sem_t *)malloc(cantidad_monstruos * sizeof(sem_t));
     if (turno_monstruos == NULL)
     {
@@ -153,9 +153,6 @@ void *heroe(void *arg)
 
         pthread_mutex_lock(&mutex);
 
-        // Lógica del héroe
-        // printf("Héroe actuando\n");
-
         int rango_ataque = heroes[id].rango_ataque ? heroes[id].rango_ataque : 0;
 
         // buscar el monstruo mas cercano
@@ -191,13 +188,11 @@ void *heroe(void *arg)
                 }
                 else
                 {
-                    printf("Vida restante del monstruo %d: %d\n", closest_monstruo_id, monstruos[closest_monstruo_id].vida);
+                    printf("Heroe %d atacando a monstruo %d. Vida restante: %d\n", id, closest_monstruo_id, monstruos[closest_monstruo_id].vida);
                 }
             }
             else
             {
-                //printf("Monstruo %d está fuera de rango de ataque. Avanzando...\n", closest_monstruo_id);
-
                 // si no puede pegarle, el heroe se mueve
                 if (heroes[id].ruta_length > 0 && heroes[id].ruta)
                 {
@@ -220,19 +215,13 @@ void *heroe(void *arg)
                 }
                 else if (heroes[id].ruta_length == 0)
                 {
-                    printf("Llegó a su destino\n");
+                    printf("El heroe %d llegó a su destino\n", id);
                     heroes[id].estado[0] = 'f'; // 'f' de finalizado
-                }
-                else
-                {
-                    printf("Héroe no tiene ruta para moverse\n");
                 }
             }
         }
         else
         {
-            printf("No hay monstruos disponibles\n");
-
             // si no hay monstruos, el heroe se mueve
             if (heroes[id].ruta_length > 0 && heroes[id].ruta)
             {
@@ -255,12 +244,8 @@ void *heroe(void *arg)
             }
             else if (heroes[id].ruta_length == 0)
             {
-                printf("Llegó a su destino\n");
+                printf("El heroe %d llegó a su destino\n", id);
                 exit(0);
-            }
-            else
-            {
-                printf("Héroe no tiene ruta para moverse\n");
             }
         }
 
@@ -281,11 +266,8 @@ void *monstruo(void *arg)
 
         pthread_mutex_lock(&mutex);
 
-        // Lógica del monstruo
         if (monstruos[id].vida > 0)
         {
-            // printf("Monstruo %d actuando\n", id);
-
             int rango_vision = *monstruos[id].rango_vision ? *monstruos[id].rango_vision : 0;
 
             // calcula distancia con el heroe mas cercano
@@ -308,41 +290,38 @@ void *monstruo(void *arg)
 
             if (closest_heroe_id == -1)
             {
-                // No hay héroes disponibles
                 pthread_mutex_unlock(&mutex);
                 sem_post(&monstruo_done[id]);
-                continue; // Salta este turno
+                continue; 
             }
 
+            // busca al heroe mas cercano
             Coord heroe_pos = heroes[closest_heroe_id].current_coords;
             int distancia = distanciaManhattan(monstruo_pos.x, monstruo_pos.y, heroe_pos.x, heroe_pos.y);
 
-            if (monstruos[id].estado[0] == 'a') // 'a' de activo
+            if (monstruos[id].estado[0] == 'a') // ve si el monstruo ya esta activo
             {
                 int rango_ataque = monstruos[id].rango_ataque ? monstruos[id].rango_ataque : 0;
                 if (distancia <= rango_ataque)
                 {
                     // le pega al heroe
                     heroes[closest_heroe_id].vida -= monstruos[id].daño;
-                    printf("Monstruo %d ataca al héroe! Vida restante del héroe: %d\n", id, heroes[closest_heroe_id].vida);
+                    printf("Monstruo %d ataca al héroe %d. Vida restante: %d\n", id, closest_heroe_id, heroes[closest_heroe_id].vida);
 
                     if (heroes[closest_heroe_id].vida <= 0)
                     {
-                        printf("El héroe %d ha sido derrotado! Fin del juego.\n", closest_heroe_id);
+                        printf("El héroe %d ha sido derrotado!\n", closest_heroe_id);
                     }
                 }
                 else
                 {
-                    //printf("Monstruo %d está fuera de rango de ataque. Avanzando...\n", id);
-
-                    // Calcular distancia y generar nueva ruta
+                    // calcular distancia y generar nueva ruta hacia el heroe
                     int distancia_hacia_heroe = distanciaManhattan(
                         monstruos[id].current_coords.x,
                         monstruos[id].current_coords.y,
                         heroe_pos.x,
                         heroe_pos.y);
 
-                    // Reservar memoria para la nueva ruta
                     Coord *nueva_ruta = malloc((distancia_hacia_heroe + 1) * sizeof(Coord));
                     if (nueva_ruta == NULL)
                     {
@@ -357,36 +336,34 @@ void *monstruo(void *arg)
                         heroe_pos.y,
                         nueva_ruta);
 
-                    // IMPORTANTE: Liberar la ruta anterior antes de asignar la nueva
                     if (monstruos[id].ruta != NULL)
                     {
                         free(monstruos[id].ruta);
                     }
 
-                    // Actualizar la ruta del monstruo
-                    monstruos[id].ruta = nueva_ruta; // Ahora sí, asignar directamente
+                    // actualiza la ruta del monstruo
+                    monstruos[id].ruta = nueva_ruta; 
                     monstruos[id].ruta_length = nueva_ruta_length;
 
-                    // Verificar que hay al menos un paso en la ruta
+                    // verificar que hay al menos un paso en la ruta
                     if (monstruos[id].ruta_length <= 0)
                     {
                         printf("Error: Ruta vacía para monstruo %d\n", id);
                         break;
                     }
 
-                    // Obtener siguiente posición (índice 1, no 0, porque 0 es la posición actual)
+                    // obtener el paso siguiente
                     Coord next_pos;
                     if (monstruos[id].ruta_length > 1)
                     {
-                        next_pos = monstruos[id].ruta[1]; // El siguiente paso
+                        next_pos = monstruos[id].ruta[1]; 
                     }
                     else
                     {
-                        // Ya está en el destino
                         next_pos = monstruos[id].ruta[0];
                     }
 
-                    // Actualizar matriz
+                    // mover al monstruo en la matriz
                     mover_entidad_matriz(
                         matriz,
                         monstruos[id].current_coords.x,
@@ -396,10 +373,9 @@ void *monstruo(void *arg)
                         width,
                         height);
 
-                    // Actualizar coordenadas actuales
                     monstruos[id].current_coords = next_pos;
 
-                    // Desplazar la ruta (eliminar el primer elemento)
+                    // desplaza la ruta (elimina el primer elemento)
                     for (int i = 0; i < monstruos[id].ruta_length - 1; i++)
                     {
                         monstruos[id].ruta[i] = monstruos[id].ruta[i + 1];
@@ -410,7 +386,7 @@ void *monstruo(void *arg)
 
             if (distancia <= rango_vision)
             {
-                printf("Monstruo %d ve al héroe a distancia %d\n", id, distancia);
+                printf("Monstruo %d ve al heroe a distancia %d\n", id, distancia);
 
                 // si esta en rango, despierta a todos los monstruos dentro de su rango de vision
                 for (int j = 0; j < cantidad_monstruos; j++)
@@ -429,15 +405,14 @@ void *monstruo(void *arg)
                 }
 
                 // si esta activo, ve si tiene el rango de ataque suficiente para pegarle al heroe
-
                 if (monstruos[id].estado[0] != 'a')
                 {
                     // si no esta activo, se activa y no hace nada
-                    monstruos[id].estado[0] = 'a'; // 'a' de activo
+                    monstruos[id].estado[0] = 'a';
                 }
             }
 
-            usleep(10000); // Simular tiempo de acción
+            usleep(10000); 
         }
 
         pthread_mutex_unlock(&mutex);
@@ -523,7 +498,6 @@ int main(int argc, char *argv[])
     }
 
     pthread_mutex_destroy(&mutex);
-    free_matriz(matriz, height, width);
 
     return 0;
 }

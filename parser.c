@@ -77,6 +77,17 @@ Entidad ***read_game_config(const char *filename, int *width, int *height, int *
                     hero_count = hero_id;
                 }
             }
+            else if (strstr(line, "HERO_HP") ||
+                     strstr(line, "HERO_ATTACK_DAMAGE") ||
+                     strstr(line, "HERO_ATTACK_RANGE") ||
+                     strstr(line, "HERO_START") ||
+                     strstr(line, "HERO_PATH"))
+            {
+                if (hero_count == 0)
+                {
+                    hero_count = 1;
+                }
+            }
         }
     }
 
@@ -144,22 +155,31 @@ Entidad ***read_game_config(const char *filename, int *width, int *height, int *
             {
                 entidades[hero_id - 1].daño = value;
             }
-            else if (sscanf(line, "HERO_%d_ATTACK_RANGE %d", &hero_id, &value) == 2)
+            // ... más propiedades con ID ...
+
+            // ✅ Parsear héroe sin ID (índice 0)
+            else if (sscanf(line, "HERO_HP %d", &value) == 1)
             {
-                entidades[hero_id - 1].rango_ataque = value;
+                entidades[0].vida = value;
             }
-            else if (sscanf(line, "HERO_%d_START %d %d", &hero_id,
-                            &entidades[hero_id - 1].start_coords.x,
-                            &entidades[hero_id - 1].start_coords.y) == 3)
+            else if (sscanf(line, "HERO_ATTACK_DAMAGE %d", &value) == 1)
+            {
+                entidades[0].daño = value;
+            }
+            else if (sscanf(line, "HERO_ATTACK_RANGE %d", &value) == 1)
+            {
+                entidades[0].rango_ataque = value;
+            }
+            else if (sscanf(line, "HERO_START %d %d",
+                            &entidades[0].start_coords.x,
+                            &entidades[0].start_coords.y) == 2)
             {
                 // Procesado
             }
-            else if (strstr(line, "_PATH") != NULL)
+            else if (strncmp(line, "HERO_PATH", 9) == 0)
             {
-                sscanf(line, "HERO_%d_PATH", &hero_id);
-                
+                // Path para héroe sin ID
                 char path_buffer[MAX_LINE * 10] = "";
-                // Obtener el resto de la línea después de "HERO_X_PATH "
                 char *path_start = strstr(line, "PATH") + 5;
                 strcat(path_buffer, path_start);
 
@@ -180,9 +200,10 @@ Entidad ***read_game_config(const char *filename, int *width, int *height, int *
                     pos = ftell(file);
                 }
 
-                entidades[hero_id - 1].ruta_length = parse_hero_path(path_buffer, &entidades[hero_id - 1].ruta);
+                entidades[0].ruta_length = parse_hero_path(path_buffer, &entidades[0].ruta);
             }
         }
+
         // Parsear datos de monstruos
         else if (strstr(line, "MONSTER_") == line)
         {
@@ -245,61 +266,4 @@ Entidad ***read_game_config(const char *filename, int *width, int *height, int *
     }
 
     return matriz;
-}
-
-void free_matriz(Entidad ***matriz, int height, int width)
-{
-    if (!matriz)
-        return;
-
-    Entidad **entidades_unicas = malloc(height * width * sizeof(Entidad *));
-    int count = 0;
-
-    for (int i = 0; i < height; i++)
-    {
-        for (int j = 0; j < width; j++)
-        {
-            if (matriz[i][j] != NULL)
-            {
-                bool encontrada = false;
-                for (int k = 0; k < count; k++)
-                {
-                    if (entidades_unicas[k] == matriz[i][j])
-                    {
-                        encontrada = true;
-                        break;
-                    }
-                }
-                if (!encontrada)
-                {
-                    entidades_unicas[count++] = matriz[i][j];
-                }
-            }
-        }
-    }
-
-    for (int i = 0; i < count; i++)
-    {
-        if (entidades_unicas[i]->ruta)
-        {
-            free(entidades_unicas[i]->ruta);
-        }
-        if (entidades_unicas[i]->rango_vision)
-        {
-            free(entidades_unicas[i]->rango_vision);
-        }
-    }
-
-    if (count > 0)
-    {
-        free(entidades_unicas[0]);
-    }
-
-    free(entidades_unicas);
-
-    for (int i = 0; i < height; i++)
-    {
-        free(matriz[i]);
-    }
-    free(matriz);
 }
